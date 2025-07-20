@@ -182,14 +182,14 @@ if st.button("🔄 Flip Card", key="flip_to_term"):
 
 col1, col2, col3 = st.columns([1, 2, 1])
 
-    with col1:
+with col1:
         if current_card > 0:
             if st.button("⬅️ Previous"):
                 st.session_state.current_card -= 1
                 st.session_state.show_answer = False
                 st.rerun()
 
-    with col3:
+with col3:
         if current_card < total_cards - 1:
             if st.button("Next ➡️"):
                 st.session_state.current_card += 1
