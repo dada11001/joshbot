@@ -11,7 +11,8 @@ from utils import initialize_session_state, display_error_message, display_succe
 #Page configuration
 st.set_page_config( page_title="StudyAI - Engineering Study Assistant", page_icon="\ud83d\udcda", layout="wide", initial_sidebar_state="expanded" )
 
-def main(): # Initialize session state initialize_session_state()
+def main(Study Assistant):
+    # Initialize session state initialize_session_state()
 
 # Main title
 st.title("\ud83d\udcda StudyAI - Engineering Study Assistant")
