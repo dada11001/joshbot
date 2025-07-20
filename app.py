@@ -107,13 +107,184 @@ if hasattr(st.session_state, 'document_name'):
                 del st.session_state[key]
         st.rerun()
 
-def questions_answers_page(): st.header("❓ Questions & Answers") if not hasattr(st.session_state, 'questions_answers'): st.warning("⚠️ Please upload and process a document first.") return if not st.session_state.questions_answers: st.error("❌ No questions were generated.") return st.success(f"📚 Generated from: {st.session_state.document_name}") for i, qa in enumerate(st.session_state.questions_answers, 1): with st.expander(f"Question {i}: {qa['question'][:100]}..."): st.markdown(f"Question Type: {qa['type']}") st.markdown(f"Question: {qa['question']}") if qa['type'] == 'multiple_choice' and 'options' in qa: for j, option in enumerate(qa['options'], 1): st.markdown(f"{j}. {option}") st.markdown(f"Answer: {qa['answer']}") if 'explanation' in qa: st.markdown(f"Explanation: {qa['explanation']}")
 
-def flash_cards_page(): st.header("🗂️ Flash Cards") if not hasattr(st.session_state, 'flash_cards'): st.warning("⚠️ Please upload and process a document first.") return if not st.session_state.flash_cards: st.error("❌ No flash cards were generated.") return st.success(f"📚 Generated from: {st.session_state.document_name}") if 'current_card' not in st.session_state: st.session_state.current_card = 0 total_cards = len(st.session_state.flash_cards) current_card = st.session_state.current_card card = st.session_state.flash_cards[current_card] if 'show_answer' not in st.session_state: st.session_state.show_answer = False if not st.session_state.show_answer: st.markdown("### 📝 Term/Concept") st.info(card['term']) if st.button("🔄 Flip Card", key="flip_to_answer"): st.session_state.show_answer = True st.rerun() else: st.markdown("### 💡 Definition/Explanation") st.success(card['definition']) if 'explanation' in card and card['explanation']: st.markdown("### 📖 Additional Context") st.markdown(card['explanation']) if st.button("🔄 Flip Card", key="flip_to_term"): st.session_state.show_answer = False st.rerun() col1, col2, col3 = st.columns([1, 2, 1]) with col1: if current_card > 0: if st.button("⬅️ Previous"): st.session_state.current_card -= 1 st.session_state.show_answer = False st.rerun() with col3: if current_card < total_cards - 1: if st.button("Next ➡️"): st.session_state.current_card += 1 st.session_state.show_answer = False st.rerun() st.progress((current_card + 1) / total_cards)
+def questions_answers_page():
+    st.header("❓ Questions & Answers")
 
-def summaries_page(): st.header("📝 Summaries") if not hasattr(st.session_state, 'summaries'): st.warning("⚠️ Please upload and process a document first.") return if not st.session_state.summaries: st.error("❌ No summaries were generated.") return st.success(f"📚 Generated from: {st.session_state.document_name}") summaries = st.session_state.summaries if 'key_concepts' in summaries: with st.expander("🔑 Key Concepts", expanded=True): st.markdown(summaries['key_concepts']) if 'main_summary' in summaries: with st.expander("📄 Main Summary", expanded=True): st.markdown(summaries['main_summary']) if 'engineering_applications' in summaries: with st.expander("⚙️ Engineering Applications"): st.markdown(summaries['engineering_applications']) if 'formulas' in summaries and summaries['formulas']: with st.expander("📐 Important Formulas & Equations"): st.markdown(summaries['formulas'])
+    if not hasattr(st.session_state, 'questions_answers'):
+        st.warning("⚠️ Please upload and process a document first.")
+        return
 
-def export_materials_page(pdf_exporter): st.header("📊 Export Study Materials") if not hasattr(st.session_state, 'document_name'): st.warning("⚠️ Please upload and process a document first.") return st.success(f"📚 Ready to export materials for: {st.session_state.document_name}") st.subheader("Select Materials to Export") export_questions = st.checkbox("❓ Questions & Answers", value=True) export_flashcards = st.checkbox("🗂️ Flash Cards", value=True) export_summaries = st.checkbox("📝 Summaries", value=True) if not any([export_questions, export_flashcards, export_summaries]): st.warning("⚠️ Please select at least one type of material to export.") return if st.button("📥 Generate PDF Export", type="primary"): try: with st.spinner("Generating PDF export..."): export_data = { 'document_name': st.session_state.document_name, 'questions_answers': st.session_state.questions_answers if export_questions else [], 'flash_cards': st.session_state.flash_cards if export_flashcards else [], 'summaries': st.session_state.summaries if export_summaries else {} } pdf_buffer = pdf_exporter.create_study_materials_pdf(export_data) st.download_button( label="📥 Download Study Materials PDF", data=pdf_buffer.getvalue(), file_name=f"study_materials_{st.session_state.document_name.replace('.', '_')}.pdf", mime="application/pdf", type="primary" ) display_success_message("🎉 PDF export generated successfully!") except Exception as e: display_error_message(f"Error generating PDF export: {str(e)}") st.divider() st.subheader("📈 Study Materials Overview") col1, col2, col3 = st.columns(3) with col1: st.metric("Questions Generated", len(st.session_state.get('questions_answers', []))) with col2: st.metric("Flash Cards Created", len(st.session_state.get('flash_cards', []))) with col3: st.metric("Summary Sections", len(st.session_state.get('summaries', {})))
+    if not st.session_state.questions_answers:
+        st.error("❌ No questions were generated.")
+        return
 
-if name == "main": main()
+    st.success(f"📚 Generated from: {st.session_state.document_name}")
+
+    for i, qa in enumerate(st.session_state.questions_answers, 1):
+        with st.expander(f"Question {i}: {qa['question'][:100]}..."):
+            st.markdown(f"Question Type: {qa['type']}")
+            st.markdown(f"Question: {qa['question']}")
+
+            if qa['type'] == 'multiple_choice' and 'options' in qa:
+                for j, option in enumerate(qa['options'], 1):
+                    st.markdown(f"{j}. {option}")
+
+            st.markdown(f"Answer: {qa['answer']}")
+
+            if 'explanation' in qa:
+                st.markdown(f"Explanation: {qa['explanation']}")
+
+
+
+def flash_cards_page():
+    st.header("🗂️ Flash Cards")
+
+    if not hasattr(st.session_state, 'flash_cards'):
+        st.warning("⚠️ Please upload and process a document first.")
+        return
+
+    if not st.session_state.flash_cards:
+        st.error("❌ No flash cards were generated.")
+        return
+
+    st.success(f"📚 Generated from: {st.session_state.document_name}")
+
+    if 'current_card' not in st.session_state:
+        st.session_state.current_card = 0
+
+    total_cards = len(st.session_state.flash_cards)
+    current_card = st.session_state.current_card
+    card = st.session_state.flash_cards[current_card]
+
+    if 'show_answer' not in st.session_state:
+        st.session_state.show_answer = False
+
+    if not st.session_state.show_answer:
+        st.markdown("### 📝 Term/Concept")
+        st.info(card['term'])
+
+        if st.button("🔄 Flip Card", key="flip_to_answer"):
+            st.session_state.show_answer = True
+            st.rerun()
+    else:
+        st.markdown("### 💡 Definition/Explanation")
+        st.success(card['definition'])
+
+        if 'explanation' in card and card['explanation']:
+            st.markdown("### 📖 Additional Context")
+
+st.markdown(card['explanation'])
+
+        if st.button("🔄 Flip Card", key="flip_to_term"):
+            st.session_state.show_answer = False
+            st.rerun()
+
+    col1, col2, col3 = st.columns([1, 2, 1])
+
+    with col1:
+        if current_card > 0:
+            if st.button("⬅️ Previous"):
+                st.session_state.current_card -= 1
+                st.session_state.show_answer = False
+                st.rerun()
+
+    with col3:
+        if current_card < total_cards - 1:
+            if st.button("Next ➡️"):
+                st.session_state.current_card += 1
+                st.session_state.show_answer = False
+                st.rerun()
+
+    st.progress((current_card + 1) / total_cards)
+
+
+
+def summaries_page():
+    st.header("📝 Summaries")
+
+    if not hasattr(st.session_state, 'summaries'):
+        st.warning("⚠️ Please upload and process a document first.")
+        return
+
+    if not st.session_state.summaries:
+        st.error("❌ No summaries were generated.")
+        return
+
+    st.success(f"📚 Generated from: {st.session_state.document_name}")
+    summaries = st.session_state.summaries
+
+    if 'key_concepts' in summaries:
+        with st.expander("🔑 Key Concepts", expanded=True):
+            st.markdown(summaries['key_concepts'])
+
+    if 'main_summary' in summaries:
+        with st.expander("📄 Main Summary", expanded=True):
+            st.markdown(summaries['main_summary'])
+
+    if 'engineering_applications' in summaries:
+        with st.expander("⚙️ Engineering Applications"):
+            st.markdown(summaries['engineering_applications'])
+
+    if 'formulas' in summaries and summaries['formulas']:
+        with st.expander("📐 Important Formulas & Equations"):
+            st.markdown(summaries['formulas'])
+
+
+    
+def export_materials_page(pdf_exporter):
+    st.header("📊 Export Study Materials")
+
+    if not hasattr(st.session_state, 'document_name'):
+        st.warning("⚠️ Please upload and process a document first.")
+        return
+
+    st.success(f"📚 Ready to export materials for: {st.session_state.document_name}")
+    st.subheader("Select Materials to Export")
+
+    export_questions = st.checkbox("❓ Questions & Answers", value=True)
+    export_flashcards = st.checkbox("🗂️ Flash Cards", value=True)
+    export_summaries = st.checkbox("📝 Summaries", value=True)
+
+    if not any([export_questions, export_flashcards, export_summaries]):
+        st.warning("⚠️ Please select at least one type of material to export.")
+        return
+
+    if st.button("📥 Generate PDF Export", type="primary"):
+        try:
+            with st.spinner("Generating PDF export..."):
+                export_data = {
+                    'document_name': st.session_state.document_name,
+                    'questions_answers': st.session_state.questions_answers if export_questions else [],
+                    'flash_cards': st.session_state.flash_cards if export_flashcards else [],
+'summaries': st.session_state.summaries if export_summaries else {}
+                }
+
+                pdf_buffer = pdf_exporter.create_study_materials_pdf(export_data)
+
+                st.download_button(
+                    label="📥 Download Study Materials PDF",
+                    data=pdf_buffer.getvalue(),
+                    file_name=f"study_materials_{st.session_state.document_name.replace('.', '_')}.pdf",
+                    mime="application/pdf",
+                    type="primary"
+                )
+
+                display_success_message("🎉 PDF export generated successfully!")
+        except Exception as e:
+            display_error_message(f"Error generating PDF export: {str(e)}")
+
+    st.divider()
+    st.subheader("📈 Study Materials Overview")
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Questions Generated", len(st.session_state.get('questions_answers', [])))
+    with col2:
+        st.metric("Flash Cards Created", len(st.session_state.get('flash_cards', [])))
+    with col3:
+        st.metric("Summary Sections", len(st.session_state.get('summaries', {})))
+
+if _name_ == "_main_":
+    main()
 
