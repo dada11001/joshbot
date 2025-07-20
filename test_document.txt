@@ -1,0 +1,32 @@
+Engineering Fundamentals: Thermodynamics
+
+Chapter 1: Introduction to Thermodynamics
+
+Thermodynamics is the branch of physics that deals with the relationships between heat and other forms of energy. In particular, it describes how thermal energy is converted to and from other forms of energy and how it affects matter.
+
+Key Concepts:
+
+1. System and Surroundings
+A thermodynamic system is a quantity of matter or a region in space chosen for study. The mass or region outside the system is called the surroundings. The real or imaginary surface that separates the system from its surroundings is called the boundary.
+
+2. Properties of a System
+Properties are characteristics that can be used to describe a system. Some familiar properties are pressure P, temperature T, volume V, and mass m. Properties are considered to be either intensive or extensive.
+
+3. State and Equilibrium
+The state of a system is described by its properties. But we know from experience that the properties of a system can change with time. A system is said to be in thermodynamic equilibrium if the temperature is the same throughout the entire system and after sufficient time has elapsed so that there are no more changes.
+
+4. Processes and Cycles
+Any change that a system undergoes from one equilibrium state to another is called a process, and the series of states through which a system passes during a process is called the path of the process. When a process proceeds in such a manner that the system remains infinitesimally close to an equilibrium state at all times, it is called a quasi-static or quasi-equilibrium process.
+
+The First Law of Thermodynamics:
+The first law of thermodynamics is simply an expression of the conservation of energy principle, and it asserts that energy is a thermodynamic property. The first law of thermodynamics states that energy cannot be created or destroyed during a process; it can only change forms.
+
+Applications in Engineering:
+Thermodynamics has wide applications in engineering, including:
+- Power generation (steam turbines, gas turbines)
+- Refrigeration and air conditioning systems
+- Internal combustion engines
+- Heat exchangers
+- Industrial processes
+
+This fundamental understanding forms the basis for advanced engineering applications and is essential for any engineering student studying thermal systems.

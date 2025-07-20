@@ -1,0 +1,393 @@
+import streamlit as st
+import os
+from io import BytesIO
+import tempfile
+from document_processor import DocumentProcessor
+from content_generator import ContentGenerator
+from pdf_exporter import PDFExporter
+from utils import initialize_session_state, display_error_message, display_success_message
+
+# Page configuration
+st.set_page_config(
+    page_title="StudyAI - Engineering Study Assistant",
+    page_icon="📚",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+def main():
+    # Initialize session state
+    initialize_session_state()
+    
+    # Main title
+    st.title("📚 StudyAI - Engineering Study Assistant")
+    st.markdown("Transform your engineering documents into comprehensive study materials")
+    
+    # Sidebar navigation
+    st.sidebar.title("Navigation")
+    page = st.sidebar.selectbox(
+        "Choose a section:",
+        ["📄 Upload Document", "❓ Questions & Answers", "🗂️ Flash Cards", "📝 Summaries", "📊 Export Materials"]
+    )
+    
+    # Initialize processors
+    doc_processor = DocumentProcessor()
+    content_generator = ContentGenerator()
+    pdf_exporter = PDFExporter()
+    
+    if page == "📄 Upload Document":
+        upload_document_page(doc_processor, content_generator)
+    elif page == "❓ Questions & Answers":
+        questions_answers_page()
+    elif page == "🗂️ Flash Cards":
+        flash_cards_page()
+    elif page == "📝 Summaries":
+        summaries_page()
+    elif page == "📊 Export Materials":
+        export_materials_page(pdf_exporter)
+
+def upload_document_page(doc_processor, content_generator):
+    st.header("📄 Upload Your Study Document")
+    
+    # AI Provider and Settings
+    col1, col2, col3 = st.columns([2, 1, 1])
+    
+    with col2:
+        # AI Provider Selection
+        provider_info = content_generator.get_provider_info()
+        st.info(f"**AI Provider:** {provider_info['current']}")
+        
+        if len(content_generator.available_providers) > 1:
+            selected_provider = st.selectbox(
+                "Choose AI Provider:",
+                content_generator.available_providers,
+                index=content_generator.available_providers.index(content_generator.current_provider),
+                format_func=lambda x: {
+                    'gemini': '🆓 Google Gemini (Free)',
+                    'claude': '💰 Anthropic Claude',
+                    'openai': '💰 OpenAI GPT-4',
+                    'local': '🔧 Local Mode'
+                }.get(x, x)
+            )
+            content_generator.current_provider = selected_provider
+    
+    with col3:
+        use_ocr = st.checkbox(
+            "Extract text from images",
+            value=True,
+            help="Enable OCR to extract text from images, diagrams, and scanned content in PDFs"
+        )
+        doc_processor.use_ocr = use_ocr
+    
+    with col1:
+        # File uploader
+        uploaded_file = st.file_uploader(
+            "Choose a PDF or DOC file",
+            type=['pdf', 'doc', 'docx'],
+            help="Upload your engineering documents (textbooks, notes, papers) to generate study materials"
+        )
+    
+    if uploaded_file is not None:
+        st.success(f"✅ File uploaded: {uploaded_file.name}")
+        
+        # Display file details
+        col1, col2 = st.columns(2)
+        with col1:
+            st.info(f"**File Name:** {uploaded_file.name}")
+            st.info(f"**File Size:** {uploaded_file.size:,} bytes")
+        
+        with col2:
+            st.info(f"**File Type:** {uploaded_file.type}")
+        
+        # Process button
+        if st.button("🔄 Process Document", type="primary"):
+            try:
+                processing_message = "Processing document and generating study materials..."
+                if use_ocr and uploaded_file.name.lower().endswith('.pdf'):
+                    processing_message += " (Including image text extraction)"
+                
+                with st.spinner(processing_message):
+                    # Save uploaded file temporarily
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[1]) as tmp_file:
+                        tmp_file.write(uploaded_file.read())
+                        tmp_file_path = tmp_file.name
+                    
+                    # Extract text from document
+                    extracted_text = doc_processor.extract_text(tmp_file_path)
+                    
+                    if not extracted_text.strip():
+                        st.error("❌ No text could be extracted from the document. Please ensure the file is not corrupted or password-protected.")
+                        return
+                    
+                    # Store extracted text in session state
+                    st.session_state.extracted_text = extracted_text
+                    st.session_state.document_name = uploaded_file.name
+                    
+                    # Generate study materials
+                    progress_bar = st.progress(0)
+                    
+                    # Generate questions and answers
+                    progress_bar.progress(25)
+                    st.session_state.questions_answers = content_generator.generate_questions_answers(extracted_text)
+                    
+                    # Generate flash cards
+                    progress_bar.progress(50)
+                    st.session_state.flash_cards = content_generator.generate_flash_cards(extracted_text)
+                    
+                    # Generate summaries
+                    progress_bar.progress(75)
+                    st.session_state.summaries = content_generator.generate_summaries(extracted_text)
+                    
+                    progress_bar.progress(100)
+                    
+                    # Clean up temporary file
+                    os.unlink(tmp_file_path)
+                    
+                    display_success_message("🎉 Document processed successfully! Navigate to other sections to view your study materials.")
+                    
+            except Exception as e:
+                display_error_message(f"Error processing document: {str(e)}")
+    
+    # AI Provider Information
+    if not content_generator.available_providers or content_generator.current_provider == 'local':
+        st.divider()
+        st.markdown("### 🚀 Unlock Unlimited AI Processing")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("""
+            **🆓 Google Gemini (Recommended)**
+            - **FREE** with generous usage limits
+            - Advanced AI capabilities
+            - No usage restrictions for most users
+            - Get API key at: [Google AI Studio](https://aistudio.google.com/app/apikey)
+            """)
+        
+        with col2:
+            st.markdown("""
+            **💰 Alternative Options**
+            - **Anthropic Claude**: Pay-per-use
+            - **OpenAI GPT-4**: Pay-per-use
+            - All provide unlimited usage with API keys
+            """)
+        
+        st.info("💡 **Tip**: Google Gemini offers the best value with free access and high-quality results for students!")
+    
+    # Display current document status
+    if hasattr(st.session_state, 'document_name'):
+        st.divider()
+        st.info(f"📄 Current Document: **{st.session_state.document_name}**")
+        
+        if st.button("🗑️ Clear Document"):
+            # Clear all session state data
+            for key in ['extracted_text', 'document_name', 'questions_answers', 'flash_cards', 'summaries']:
+                if key in st.session_state:
+                    del st.session_state[key]
+            st.rerun()
+
+def questions_answers_page():
+    st.header("❓ Questions & Answers")
+    
+    if not hasattr(st.session_state, 'questions_answers'):
+        st.warning("⚠️ Please upload and process a document first.")
+        return
+    
+    if not st.session_state.questions_answers:
+        st.error("❌ No questions were generated. Please try uploading a different document.")
+        return
+    
+    st.success(f"📚 Generated from: **{st.session_state.document_name}**")
+    
+    # Display questions and answers
+    for i, qa in enumerate(st.session_state.questions_answers, 1):
+        with st.expander(f"Question {i}: {qa['question'][:100]}..." if len(qa['question']) > 100 else f"Question {i}: {qa['question']}"):
+            st.markdown(f"**Question Type:** {qa['type']}")
+            st.markdown(f"**Question:** {qa['question']}")
+            
+            if qa['type'] == 'multiple_choice' and 'options' in qa:
+                st.markdown("**Options:**")
+                for j, option in enumerate(qa['options'], 1):
+                    st.markdown(f"{j}. {option}")
+            
+            st.markdown(f"**Answer:** {qa['answer']}")
+            
+            if 'explanation' in qa:
+                st.markdown(f"**Explanation:** {qa['explanation']}")
+
+def flash_cards_page():
+    st.header("🗂️ Flash Cards")
+    
+    if not hasattr(st.session_state, 'flash_cards'):
+        st.warning("⚠️ Please upload and process a document first.")
+        return
+    
+    if not st.session_state.flash_cards:
+        st.error("❌ No flash cards were generated. Please try uploading a different document.")
+        return
+    
+    st.success(f"📚 Generated from: **{st.session_state.document_name}**")
+    
+    # Flash card navigation
+    if 'current_card' not in st.session_state:
+        st.session_state.current_card = 0
+    
+    total_cards = len(st.session_state.flash_cards)
+    current_card = st.session_state.current_card
+    
+    # Card counter
+    st.markdown(f"**Card {current_card + 1} of {total_cards}**")
+    
+    # Flash card display
+    card = st.session_state.flash_cards[current_card]
+    
+    # Card flip functionality
+    if 'show_answer' not in st.session_state:
+        st.session_state.show_answer = False
+    
+    if not st.session_state.show_answer:
+        # Show term/question side
+        st.markdown("### 📝 Term/Concept")
+        st.info(card['term'])
+        
+        if st.button("🔄 Flip Card", key="flip_to_answer"):
+            st.session_state.show_answer = True
+            st.rerun()
+    else:
+        # Show definition/answer side
+        st.markdown("### 💡 Definition/Explanation")
+        st.success(card['definition'])
+        
+        if 'explanation' in card and card['explanation']:
+            st.markdown("### 📖 Additional Context")
+            st.markdown(card['explanation'])
+        
+        if st.button("🔄 Flip Card", key="flip_to_term"):
+            st.session_state.show_answer = False
+            st.rerun()
+    
+    # Navigation buttons
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col1:
+        if current_card > 0:
+            if st.button("⬅️ Previous"):
+                st.session_state.current_card -= 1
+                st.session_state.show_answer = False
+                st.rerun()
+    
+    with col3:
+        if current_card < total_cards - 1:
+            if st.button("Next ➡️"):
+                st.session_state.current_card += 1
+                st.session_state.show_answer = False
+                st.rerun()
+    
+    # Progress bar
+    progress = (current_card + 1) / total_cards
+    st.progress(progress)
+
+def summaries_page():
+    st.header("📝 Summaries")
+    
+    if not hasattr(st.session_state, 'summaries'):
+        st.warning("⚠️ Please upload and process a document first.")
+        return
+    
+    if not st.session_state.summaries:
+        st.error("❌ No summaries were generated. Please try uploading a different document.")
+        return
+    
+    st.success(f"📚 Generated from: **{st.session_state.document_name}**")
+    
+    # Display summaries
+    summaries = st.session_state.summaries
+    
+    # Key concepts summary
+    if 'key_concepts' in summaries:
+        with st.expander("🔑 Key Concepts", expanded=True):
+            st.markdown(summaries['key_concepts'])
+    
+    # Main summary
+    if 'main_summary' in summaries:
+        with st.expander("📄 Main Summary", expanded=True):
+            st.markdown(summaries['main_summary'])
+    
+    # Engineering applications
+    if 'engineering_applications' in summaries:
+        with st.expander("⚙️ Engineering Applications"):
+            st.markdown(summaries['engineering_applications'])
+    
+    # Important formulas/equations
+    if 'formulas' in summaries and summaries['formulas']:
+        with st.expander("📐 Important Formulas & Equations"):
+            st.markdown(summaries['formulas'])
+
+def export_materials_page(pdf_exporter):
+    st.header("📊 Export Study Materials")
+    
+    if not hasattr(st.session_state, 'document_name'):
+        st.warning("⚠️ Please upload and process a document first.")
+        return
+    
+    st.success(f"📚 Ready to export materials for: **{st.session_state.document_name}**")
+    
+    # Export options
+    st.subheader("Select Materials to Export")
+    
+    export_questions = st.checkbox("❓ Questions & Answers", value=True)
+    export_flashcards = st.checkbox("🗂️ Flash Cards", value=True)
+    export_summaries = st.checkbox("📝 Summaries", value=True)
+    
+    if not any([export_questions, export_flashcards, export_summaries]):
+        st.warning("⚠️ Please select at least one type of material to export.")
+        return
+    
+    # Export button
+    if st.button("📥 Generate PDF Export", type="primary"):
+        try:
+            with st.spinner("Generating PDF export..."):
+                # Prepare export data
+                export_data = {
+                    'document_name': st.session_state.document_name,
+                    'questions_answers': st.session_state.questions_answers if export_questions else [],
+                    'flash_cards': st.session_state.flash_cards if export_flashcards else [],
+                    'summaries': st.session_state.summaries if export_summaries else {}
+                }
+                
+                # Generate PDF
+                pdf_buffer = pdf_exporter.create_study_materials_pdf(export_data)
+                
+                # Create download button
+                st.download_button(
+                    label="📥 Download Study Materials PDF",
+                    data=pdf_buffer.getvalue(),
+                    file_name=f"study_materials_{st.session_state.document_name.replace('.', '_')}.pdf",
+                    mime="application/pdf",
+                    type="primary"
+                )
+                
+                display_success_message("🎉 PDF export generated successfully! Click the download button above to save your study materials.")
+                
+        except Exception as e:
+            display_error_message(f"Error generating PDF export: {str(e)}")
+    
+    # Statistics
+    st.divider()
+    st.subheader("📈 Study Materials Overview")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        qa_count = len(st.session_state.get('questions_answers', []))
+        st.metric("Questions Generated", qa_count)
+    
+    with col2:
+        fc_count = len(st.session_state.get('flash_cards', []))
+        st.metric("Flash Cards Created", fc_count)
+    
+    with col3:
+        summary_sections = len(st.session_state.get('summaries', {}))
+        st.metric("Summary Sections", summary_sections)
+
+if __name__ == "__main__":
+    main()
