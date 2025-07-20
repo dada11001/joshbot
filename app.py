@@ -196,7 +196,7 @@ with col3:
                 st.session_state.show_answer = False
                 st.rerun()
 
-    st.progress((current_card + 1) / total_cards)
+                st.progress((current_card + 1) / total_cards)
 
 
 
@@ -239,12 +239,12 @@ def export_materials_page(pdf_exporter):
         st.warning("⚠️ Please upload and process a document first.")
         return
 
-    st.success(f"📚 Ready to export materials for: {st.session_state.document_name}")
-    st.subheader("Select Materials to Export")
+        st.success(f"📚 Ready to export materials for: {st.session_state.document_name}")
+        st.subheader("Select Materials to Export")
 
-    export_questions = st.checkbox("❓ Questions & Answers", value=True)
-    export_flashcards = st.checkbox("🗂️ Flash Cards", value=True)
-    export_summaries = st.checkbox("📝 Summaries", value=True)
+        export_questions = st.checkbox("❓ Questions & Answers", value=True)
+        export_flashcards = st.checkbox("🗂️ Flash Cards", value=True)
+        export_summaries = st.checkbox("📝 Summaries", value=True)
 
     if not any([export_questions, export_flashcards, export_summaries]):
         st.warning("⚠️ Please select at least one type of material to export.")
