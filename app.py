@@ -78,7 +78,7 @@ if uploaded_file is not None:
 
                 if not extracted_text.strip():
                     st.error("❌ No text could be extracted. Check the file integrity.")
-                    return
+                return
 
                 st.session_state.extracted_text = extracted_text
                 st.session_state.document_name = uploaded_file.name
