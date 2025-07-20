@@ -1,5 +1,12 @@
-import streamlit as st import os from io import BytesIO import tempfile from document_processor import DocumentProcessor from content_generator import ContentGenerator from pdf_exporter import PDFExporter from utils import initialize_session_state, display_error_message, display_success_message
+import streamlit as st
+import os
+from io import BytesIO
+import tempfile
 
+from document_processor import DocumentProcessor
+from content_generator import ContentGenerator
+from pdf_exporter import PDFExporter
+from utils import initialize_session_state, display_error_message, display_success_message
 Page configuration
 
 st.set_page_config( page_title="StudyAI - Engineering Study Assistant", page_icon="\ud83d\udcda", layout="wide", initial_sidebar_state="expanded" )
