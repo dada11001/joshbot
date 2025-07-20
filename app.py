@@ -180,7 +180,7 @@ if st.button("🔄 Flip Card", key="flip_to_term"):
             st.session_state.show_answer = False
             st.rerun()
 
-    col1, col2, col3 = st.columns([1, 2, 1])
+col1, col2, col3 = st.columns([1, 2, 1])
 
     with col1:
         if current_card > 0:
