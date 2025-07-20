@@ -176,7 +176,7 @@ def flash_cards_page():
 
 st.markdown(card['explanation'])
 
-        if st.button("🔄 Flip Card", key="flip_to_term"):
+if st.button("🔄 Flip Card", key="flip_to_term"):
             st.session_state.show_answer = False
             st.rerun()
 
