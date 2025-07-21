@@ -11,7 +11,7 @@ from utils import initialize_session_state, display_error_message, display_succe
 # Page configuration
 st.set_page_config(
     page_title="StudyAI - Engineering Study Assistant",
-    page_icon="📚", # Changed for direct emoji
+    page_icon="📚",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -21,7 +21,7 @@ st.set_page_config(
 def upload_document_page(doc_processor, content_generator):
     st.header("📄 Upload Your Study Document")
 
-    st.info("**AI Provider:** 🆓 Google Gemini (Free)")
+    # Removed: st.info("**AI Provider:** 🆓 Google Gemini (Free)")
 
     use_ocr = st.checkbox(
         "Extract text from images",
@@ -40,7 +40,7 @@ def upload_document_page(doc_processor, content_generator):
         st.success(f"✅ File uploaded: **{uploaded_file.name}**")
 
         if st.button("🔄 Process Document", type="primary"):
-            tmp_file_path = None # Initialize outside try for cleanup
+            tmp_file_path = None
             try:
                 processing_message = "Processing document and generating study materials..."
                 if use_ocr and uploaded_file.name.lower().endswith('.pdf'):
@@ -61,7 +61,7 @@ def upload_document_page(doc_processor, content_generator):
                     st.session_state.extracted_text = extracted_text
                     st.session_state.document_name = uploaded_file.name
 
-                    initialize_session_state() # Ensure session state keys are set up
+                    initialize_session_state()
 
                     progress_bar = st.progress(0)
                     progress_bar.progress(25, text="Generating Questions & Answers...")
@@ -266,31 +266,38 @@ def export_materials_page(pdf_exporter):
 
 # --- Main Application Logic ---
 def main():
-    st.title("📚 StudyAI - Engineering Study Assistant")
-    st.markdown("Transform your engineering documents into comprehensive study materials")
+    # Use columns to push content to the center
+    # Adjust column ratios to control the width of the main content area
+    # (1, 3, 1) means left empty column, main content, right empty column
+    col_left, col_main, col_right = st.columns([1, 3, 1])
 
-    st.sidebar.title("Navigation")
-    page = st.sidebar.radio(
-        "📂 Sections",
-        ["📄 Upload Document", "❓ Questions & Answers", "🗂️ Flash Cards", "📝 Summaries", "📊 Export Materials"]
-    )
+    with col_main:
+        st.title("📚 StudyAI - Engineering Study Assistant")
+        st.markdown("Transform your engineering documents into comprehensive study materials")
 
-    doc_processor = DocumentProcessor()
-    content_generator = ContentGenerator()
-    pdf_exporter = PDFExporter()
+        # Sidebar navigation using radio (cleaner UX)
+        st.sidebar.title("Navigation")
+        page = st.sidebar.radio(
+            "📂 Sections",
+            ["📄 Upload Document", "❓ Questions & Answers", "🗂️ Flash Cards", "📝 Summaries", "📊 Export Materials"]
+        )
 
-    if page == "📄 Upload Document":
-        upload_document_page(doc_processor, content_generator)
-    elif page == "❓ Questions & Answers":
-        questions_answers_page()
-    elif page == "🗂️ Flash Cards":
-        flash_cards_page()
-    elif page == "📝 Summaries":
-        summaries_page()
-    elif page == "📊 Export Materials":
-        export_materials_page(pdf_exporter)
+        doc_processor = DocumentProcessor()
+        content_generator = ContentGenerator()
+        pdf_exporter = PDFExporter()
 
-    initialize_session_state()
+        if page == "📄 Upload Document":
+            upload_document_page(doc_processor, content_generator)
+        elif page == "❓ Questions & Answers":
+            questions_answers_page()
+        elif page == "🗂️ Flash Cards":
+            flash_cards_page()
+        elif page == "📝 Summaries":
+            summaries_page()
+        elif page == "📊 Export Materials":
+            export_materials_page(pdf_exporter)
+
+        initialize_session_state()
 
 # Entry point
 if __name__ == "__main__":
