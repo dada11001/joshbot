@@ -1,0 +1,3 @@
+pip install streamlit google-generativeai
+
+pip freeze > requirements.txt
