@@ -1,186 +1,90 @@
 import json
 import os
 from typing import List, Dict, Any
-from openai import OpenAI
 import streamlit as st
 import google.generativeai as genai
-from anthropic import Anthropic
-import requests
 
 class ContentGenerator:
     """
-    Generates study materials using multiple AI providers for unlimited usage
-    Supports OpenAI, Google Gemini, Anthropic Claude, and local models
+    Generates study materials exclusively using Google Gemini AI for unlimited usage.
     """
     
     def __init__(self):
         self.available_providers = []
         self.clients = {}
         
-        # Initialize all available AI providers
+        # Initialize Google Gemini AI provider
         self._initialize_providers()
         
-        # Set default provider
+        # Set default provider (which will be Gemini if successfully initialized)
         self.current_provider = self._get_best_available_provider()
+        if not self.current_provider:
+            st.error("No AI provider could be initialized. Please ensure your GEMINI_API_KEY environment variable is correctly set.")
     
     def _initialize_providers(self):
-        """Initialize all available AI providers"""
+        """Initialize Google Gemini AI provider."""
         
         # Google Gemini (Free with generous limits)
-        gemini_key = os.getenv("GOOGLE_API_KEY", "")
+        # It is highly recommended to set your Gemini API key as an environment variable
+        # named 'GEMINI_API_KEY'.
+        # Example: In your terminal, before running the app:
+        # export GEMINI_API_KEY="YOUR_ACTUAL_GEMINI_API_KEY_HERE"
+        # The key you provided in the original code, "AIzaSyBVdVRliKttOoto-FnfiQPkmEvlK96TXyM",
+        # should be the VALUE of your GEMINI_API_KEY environment variable.
+        gemini_key = os.getenv("GEMINI_API_KEY") 
+        
         if gemini_key:
             try:
                 genai.configure(api_key=gemini_key)
                 self.clients['gemini'] = genai.GenerativeModel('gemini-1.5-flash')
                 self.available_providers.append('gemini')
             except Exception as e:
-                st.warning(f"Could not initialize Google Gemini: {str(e)}")
-        
-        # Anthropic Claude
-        anthropic_key = os.getenv("ANTHROPIC_API_KEY", "")
-        if anthropic_key:
-            try:
-                self.clients['claude'] = Anthropic(api_key=anthropic_key)
-                self.available_providers.append('claude')
-            except Exception as e:
-                st.warning(f"Could not initialize Anthropic Claude: {str(e)}")
-        
-        # OpenAI
-        openai_key = os.getenv("OPENAI_API_KEY", "")
-        if openai_key:
-            try:
-                self.clients['openai'] = OpenAI(api_key=openai_key)
-                self.available_providers.append('openai')
-            except Exception as e:
-                st.warning(f"Could not initialize OpenAI: {str(e)}")
-        
-        # Local/Free alternatives (if no API keys available)
-        if not self.available_providers:
-            self.available_providers.append('local')
-            st.info("💡 No API keys found. Using local processing mode with limited functionality.")
+                st.error(f"Could not initialize Google Gemini: {str(e)}. "
+                         f"Please ensure your GEMINI_API_KEY is valid and has access.")
+        else:
+            st.warning("GEMINI_API_KEY environment variable not found. Google Gemini AI will not be available.")
     
     def _get_best_available_provider(self):
-        """Get the best available provider based on usage limits and capabilities"""
-        # Priority: Gemini (free with high limits) > Claude > OpenAI > Local
-        priority_order = ['gemini', 'claude', 'openai', 'local']
-        
-        for provider in priority_order:
-            if provider in self.available_providers:
-                return provider
-        
-        return 'local'
+        """Get the best available provider (Gemini is the only option)."""
+        if 'gemini' in self.available_providers:
+            return 'gemini'
+        return None # Indicate no provider is available
     
     def get_provider_info(self):
-        """Get information about available providers"""
+        """Get information about the available provider (Gemini only)."""
         provider_info = {
-            'gemini': '🆓 Google Gemini - Free with generous limits',
-            'claude': '💰 Anthropic Claude - Pay-per-use',
-            'openai': '💰 OpenAI GPT-4 - Pay-per-use',
-            'local': '🔧 Local processing - Limited functionality'
+            'gemini': '🆓 Google Gemini - Free with generous limits'
         }
         
+        current_provider_display = provider_info.get(self.current_provider, 'No AI provider available')
+        available_list = [provider_info[p] for p in self.available_providers if p in provider_info]
+        
         return {
-            'current': provider_info.get(self.current_provider, 'Unknown'),
-            'available': [provider_info[p] for p in self.available_providers]
+            'current': current_provider_display,
+            'available': available_list
         }
     
     def _generate_with_provider(self, prompt: str, provider: str = None) -> str:
-        """Generate content using the specified or current provider"""
+        """Generate content using the specified or current provider (Gemini only)."""
         if provider is None:
             provider = self.current_provider
         
+        if provider != 'gemini' or 'gemini' not in self.clients:
+            st.error(f"Gemini provider not available or selected. Current provider: {self.current_provider}. "
+                     "No content will be generated.")
+            return ""
+            
         try:
-            if provider == 'gemini' and 'gemini' in self.clients:
-                response = self.clients['gemini'].generate_content(prompt)
-                return response.text
-            
-            elif provider == 'claude' and 'claude' in self.clients:
-                response = self.clients['claude'].messages.create(
-                    model="claude-3-haiku-20240307",
-                    max_tokens=4000,
-                    messages=[{"role": "user", "content": prompt}]
-                )
-                return response.content[0].text
-            
-            elif provider == 'openai' and 'openai' in self.clients:
-                response = self.clients['openai'].chat.completions.create(
-                    model="gpt-4o",
-                    messages=[{"role": "user", "content": prompt}],
-                    max_tokens=4000
-                )
-                return response.choices[0].message.content or ""
-            
-            elif provider == 'local':
-                return self._generate_local_content(prompt)
-            
-            else:
-                raise Exception(f"Provider {provider} not available")
+            response = self.clients['gemini'].generate_content(prompt)
+            return response.text
         
         except Exception as e:
-            st.error(f"Error with {provider}: {str(e)}")
-            # Try fallback to next available provider
-            remaining_providers = [p for p in self.available_providers if p != provider]
-            if remaining_providers:
-                st.info(f"Trying fallback provider: {remaining_providers[0]}")
-                return self._generate_with_provider(prompt, remaining_providers[0])
-            else:
-                return ""
-    
-    def _generate_local_content(self, prompt: str) -> str:
-        """Generate basic content using local/template-based approach"""
-        if "questions" in prompt.lower():
-            return self._create_template_questions()
-        elif "flash" in prompt.lower():
-            return self._create_template_flashcards()
-        elif "summar" in prompt.lower():
-            return self._create_template_summary()
-        else:
+            st.error(f"Error with Gemini AI generation: {str(e)}")
             return ""
     
-    def _create_template_questions(self) -> str:
-        """Create template questions when no AI provider is available"""
-        return json.dumps([
-            {
-                "type": "conceptual",
-                "question": "What are the main concepts covered in this document?",
-                "answer": "Please review the document to identify key concepts.",
-                "explanation": "This is a template question. Please add API keys for AI-generated content."
-            },
-            {
-                "type": "application",
-                "question": "How can the concepts in this document be applied in engineering practice?",
-                "answer": "Consider practical applications based on the document content.",
-                "explanation": "This is a template question. Please add API keys for AI-generated content."
-            }
-        ])
-    
-    def _create_template_flashcards(self) -> str:
-        """Create template flashcards when no AI provider is available"""
-        return json.dumps([
-            {
-                "term": "Key Concept 1",
-                "definition": "Please review the document to identify key terms and definitions.",
-                "explanation": "This is a template flashcard. Please add API keys for AI-generated content."
-            },
-            {
-                "term": "Key Concept 2", 
-                "definition": "Please review the document to identify key terms and definitions.",
-                "explanation": "This is a template flashcard. Please add API keys for AI-generated content."
-            }
-        ])
-    
-    def _create_template_summary(self) -> str:
-        """Create template summary when no AI provider is available"""
-        return json.dumps({
-            "key_concepts": "• Please add API keys to generate AI-powered summaries\n• Template mode provides basic structure only",
-            "main_summary": "This is a template summary. To get AI-generated summaries with detailed analysis, please add API keys for Google Gemini (free), Anthropic Claude, or OpenAI.",
-            "engineering_applications": "Please add API keys to generate specific engineering applications.",
-            "formulas": "Please add API keys to extract and explain mathematical formulas."
-        })
-
     def generate_questions_answers(self, text: str) -> List[Dict[str, Any]]:
         """
-        Generate comprehensive questions and answers from document text
+        Generates comprehensive questions and answers from document text using Gemini.
         
         Args:
             text (str): Extracted document text
@@ -188,7 +92,8 @@ class ContentGenerator:
         Returns:
             List[Dict]: List of question-answer pairs with explanations
         """
-        if not self.available_providers:
+        if not self.current_provider: # Check if Gemini was successfully initialized
+            st.warning("No AI provider available to generate questions.")
             return []
         
         try:
@@ -235,13 +140,18 @@ Document text:
             # Try to parse as JSON
             try:
                 result = json.loads(content)
-            except:
+            except json.JSONDecodeError:
                 # If not valid JSON, try to extract JSON from the response
                 import re
                 json_match = re.search(r'\[.*\]', content, re.DOTALL)
                 if json_match:
-                    result = json.loads(json_match.group())
+                    try:
+                        result = json.loads(json_match.group())
+                    except json.JSONDecodeError:
+                        st.error("Failed to parse JSON even after regex extraction for questions.")
+                        return []
                 else:
+                    st.error("No valid JSON array found in the Gemini response for questions.")
                     return []
             
             # Ensure we have a list of questions
@@ -250,6 +160,7 @@ Document text:
             elif isinstance(result, list):
                 return result
             else:
+                st.error("Gemini response for questions is not in the expected list format.")
                 return []
                 
         except Exception as e:
@@ -258,7 +169,7 @@ Document text:
     
     def generate_flash_cards(self, text: str) -> List[Dict[str, str]]:
         """
-        Generate flash cards with key terms and definitions
+        Generates flash cards with key terms and definitions using Gemini.
         
         Args:
             text (str): Extracted document text
@@ -266,7 +177,8 @@ Document text:
         Returns:
             List[Dict]: List of flash card term-definition pairs
         """
-        if not self.available_providers:
+        if not self.current_provider: # Check if Gemini was successfully initialized
+            st.warning("No AI provider available to generate flash cards.")
             return []
         
         try:
@@ -304,23 +216,29 @@ Document text:
             # Try to parse as JSON
             try:
                 result = json.loads(content)
-            except:
+            except json.JSONDecodeError:
                 # If not valid JSON, try to extract JSON from the response
                 import re
                 json_match = re.search(r'\[.*\]', content, re.DOTALL)
                 if json_match:
-                    result = json.loads(json_match.group())
+                    try:
+                        result = json.loads(json_match.group())
+                    except json.JSONDecodeError:
+                        st.error("Failed to parse JSON even after regex extraction for flash cards.")
+                        return []
                 else:
+                    st.error("No valid JSON array found in the Gemini response for flash cards.")
                     return []
             
             # Ensure we have a list of flash cards
             if isinstance(result, dict) and 'flashcards' in result:
                 return result['flashcards']
-            elif isinstance(result, dict) and 'cards' in result:
+            elif isinstance(result, dict) and 'cards' in result: # Handle alternative keys from AI
                 return result['cards']
             elif isinstance(result, list):
                 return result
             else:
+                st.error("Gemini response for flash cards is not in the expected list format.")
                 return []
                 
         except Exception as e:
@@ -329,7 +247,7 @@ Document text:
     
     def generate_summaries(self, text: str) -> Dict[str, str]:
         """
-        Generate comprehensive summaries and key points
+        Generates comprehensive summaries and key points using Gemini.
         
         Args:
             text (str): Extracted document text
@@ -337,7 +255,8 @@ Document text:
         Returns:
             Dict: Different types of summaries and key information
         """
-        if not self.available_providers:
+        if not self.current_provider: # Check if Gemini was successfully initialized
+            st.warning("No AI provider available to generate summaries.")
             return {}
         
         try:
@@ -358,7 +277,7 @@ Focus on:
 
 Return the response as a JSON object with this format:
 {{
-    "key_concepts": "• Key concept 1\n• Key concept 2\n...",
+    "key_concepts": "• Key concept 1\\n• Key concept 2\\n...",
     "main_summary": "Comprehensive summary of main content",
     "engineering_applications": "Real-world applications and use cases",
     "formulas": "Important formulas and equations (if applicable)"
@@ -374,13 +293,18 @@ Document text:
             # Try to parse as JSON
             try:
                 result = json.loads(content)
-            except:
+            except json.JSONDecodeError:
                 # If not valid JSON, try to extract JSON from the response
                 import re
                 json_match = re.search(r'\{.*\}', content, re.DOTALL)
                 if json_match:
-                    result = json.loads(json_match.group())
+                    try:
+                        result = json.loads(json_match.group())
+                    except json.JSONDecodeError:
+                        st.error("Failed to parse JSON even after regex extraction for summaries.")
+                        return {}
                 else:
+                    st.error("No valid JSON object found in the Gemini response for summaries.")
                     return {}
             
             return result if isinstance(result, dict) else {}
@@ -391,7 +315,10 @@ Document text:
     
     def _chunk_text(self, text: str, chunk_size: int = 8000) -> List[str]:
         """
-        Split large text into manageable chunks for API processing
+        Split large text into manageable chunks for API processing.
+        This method is kept for potential future use or if Gemini's
+        context window changes or smaller models are used.
+        The current generation prompts already limit input text size.
         
         Args:
             text (str): Text to chunk
@@ -416,7 +343,8 @@ Document text:
                     current_chunk = [word]
                     current_length = word_length
                 else:
-                    # Word is too long, split it
+                    # If a single word is larger than chunk_size, split it
+                    # This is a rare edge case for natural language but handled for robustness.
                     chunks.append(word[:chunk_size])
                     current_chunk = [word[chunk_size:]] if len(word) > chunk_size else []
                     current_length = len(current_chunk[0]) if current_chunk else 0
